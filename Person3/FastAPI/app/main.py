@@ -97,6 +97,23 @@ def search_youtube_endpoint(topic: str = "quadratic equation tutorial", max_resu
     return {"topic": topic, "results": search_youtube(topic, max_results=max_results)}
 
 
+def _curated_bookshelf_resources(topic_list: list, per_topic: int, skip_cache: bool = False, content_type_filter: str | None = None):
+    """Fetch resources (S3 cache first), apply Bedrock scoring, content_type, and AI summaries."""
+    if not skip_cache and topic_list:
+        cached = s3_cache_get(topic_list, per_topic)
+        if cached is not None:
+            if content_type_filter:
+                cached = [r for r in cached if r.get("content_type") == content_type_filter or r.get("type") == content_type_filter]
+            return cached
+    resources = get_bookshelf_resources(topic_list, per_topic=per_topic, skip_cache=skip_cache)
+    resources = apply_curation(resources, score_with_bedrock=True, add_summaries=True)
+    if content_type_filter:
+        resources = [r for r in resources if r.get("content_type") == content_type_filter or r.get("type") == content_type_filter]
+    if topic_list and resources:
+        s3_cache_set(topic_list, per_topic, resources)
+    return resources
+
+
 @app.get("/bookshelf")
 def bookshelf(
     topics: str = "merge sort,binary search,divide and conquer",
@@ -105,25 +122,33 @@ def bookshelf(
 ):
     """Resources for 3D bookshelf. content_type=video for YouTube only."""
     topic_list = [t.strip() for t in topics.split(",") if t.strip()]
-    resources = get_bookshelf_resources(topic_list, per_topic=per_topic)
-    if content_type:
-        resources = [r for r in resources if r.get("type") == content_type]
-    return {"resources": resources}
+    return {"resources": _curated_bookshelf_resources(topic_list, per_topic, content_type_filter=content_type)}
 
 
 @app.post("/bookshelf")
 def bookshelf_post(body: BookshelfRequest, content_type: str | None = None):
     """Same as GET but topics in body. Add ?content_type=video for YouTube only."""
-    resources = get_bookshelf_resources(body.topics, per_topic=body.per_topic)
-    if content_type:
-        resources = [r for r in resources if r.get("type") == content_type]
-    return {"resources": resources}
+    return {"resources": _curated_bookshelf_resources(body.topics, body.per_topic, content_type_filter=content_type)}
 
 
 @app.post("/bookshelf/refresh")
 def bookshelf_refresh(body: BookshelfRequest):
     """Re-fetch resources (bypass cache)."""
-    return {"resources": get_bookshelf_resources(body.topics, per_topic=body.per_topic, skip_cache=True)}
+    return {"resources": _curated_bookshelf_resources(body.topics, body.per_topic, skip_cache=True)}
+
+
+DEMO_TOPICS = ["binary search", "sorting algorithms", "recursion", "arrays", "linked lists"]
+
+
+@app.post("/bookshelf/prewarm")
+def bookshelf_prewarm(body: BookshelfRequest | None = Body(None)):
+    """
+    Pre-warm cache for given topics (or demo topics). P2 can call this after ingest to fill cache.
+    Body: { "topics": ["concept1", "concept2"], "per_topic": 3 }. Omit body to use demo topic list.
+    """
+    if not body or not body.topics:
+        body = BookshelfRequest(topics=DEMO_TOPICS, per_topic=3)
+    return {"resources": _curated_bookshelf_resources(body.topics, body.per_topic, skip_cache=False)}
 
 
 # ---- Person 3: NPC speech (TTS) ----
