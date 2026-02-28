@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useRef, useState, useMemo, useEffect, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import {
@@ -474,17 +475,54 @@ function ClassroomContent() {
   );
 }
 
+// ─── Error Boundary for WebGL/Canvas Crashes ─────────────────────────────────
+
+class CanvasErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-[#1a1a2e] to-[#16213e] text-white p-8">
+          <div className="text-center max-w-md">
+            <div className="text-4xl mb-4">&#x1F3EB;</div>
+            <h2 className="text-xl font-bold mb-2">3D Classroom Unavailable</h2>
+            <p className="text-white/70 mb-4">
+              Your browser may not support WebGL, or the 3D scene failed to load.
+              You can still use all learning features through the panels below.
+            </p>
+            <p className="text-xs text-white/40">{this.state.error?.message}</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function ClassroomScene() {
   return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 3, 6], fov: 60 }}
-      style={{ background: "linear-gradient(to bottom, #1a1a2e, #16213e)" }}
-    >
-      <Suspense fallback={<LoadingSpinner />}>
-        <ClassroomContent />
-      </Suspense>
-    </Canvas>
+    <CanvasErrorBoundary>
+      <Canvas
+        shadows
+        camera={{ position: [0, 3, 6], fov: 60 }}
+        style={{ background: "linear-gradient(to bottom, #1a1a2e, #16213e)" }}
+      >
+        <Suspense fallback={<LoadingSpinner />}>
+          <ClassroomContent />
+        </Suspense>
+      </Canvas>
+    </CanvasErrorBoundary>
   );
 }
 

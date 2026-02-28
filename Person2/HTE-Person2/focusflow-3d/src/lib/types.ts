@@ -1,5 +1,5 @@
 /**
- * FocusFlow 3D - PRD data models (Section 5.1.1)
+ * EDU Oasis - PRD data models (Section 5.1.1)
  * Person 2: AI Backend — shared with Adaptive Engine (P6)
  */
 

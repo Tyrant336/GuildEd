@@ -1,0 +1,5 @@
+{
+  "concept_id": "binary-search",
+  "mode": "step-by-step",
+  "explanation": "## What is Binary Search?\n\nBinary search is an efficient algorithm for finding a target value within a **sorted** array.\n\n## How It Works\n\n**Step 1: Start with the full range**\nSet two pointers — `low` at the start and `high` at the end of the array.\n\n**Step 2: Find the middle**\nCalculate `mid = Math.floor((low + high) / 2)`.\n\n**Step 3: Compare**\n- If `array[mid] === target` — Found it! Return `mid`.\n- If `array[mid] < target` — Target is in the right half. Set `low = mid + 1`.\n- If `array[mid] > target` — Target is in the left half. Set `high = mid - 1`.\n\n**Step 4: Repeat**\nGo back to Step 2. If `low > high`, the target is not in the array.\n\n## Example\n\nSearching for `7` in `[1, 3, 5, 7, 9, 11, 13]`:\n\n1. low=0, high=6, mid=3 — array[3]=7 — **Found!**\n\n## Key Insight\n\nEach comparison eliminates **half** of the remaining elements, giving O(log n) performance."
+}

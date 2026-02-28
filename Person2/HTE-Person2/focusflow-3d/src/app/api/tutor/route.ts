@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 const systemPromptFromState = (state?: LearnerStateSnapshot | null): string => {
   if (!state) {
-    return `You are a supportive AI tutor in FocusFlow 3D, an immersive learning environment for neurodivergent students. Be concise, kind, and adaptive. Suggest activities (whiteboard concept, quiz, lab challenge, bookshelf) when relevant.`;
+    return `You are a supportive AI tutor in EDU Oasis, an immersive learning environment for neurodivergent students. Be concise, kind, and adaptive. Suggest activities (whiteboard concept, quiz, lab challenge, bookshelf) when relevant.`;
   }
   const weak = state.concepts
     ? Object.entries(state.concepts)
@@ -21,7 +21,7 @@ const systemPromptFromState = (state?: LearnerStateSnapshot | null): string => {
       .slice(0, 5)
     : [];
   const cognitive = state.cognitive_state ?? 'okay';
-  let prompt = `You are the AI tutor in FocusFlow 3D for neurodivergent learners. Be concise and adaptive.
+  let prompt = `You are the AI tutor in EDU Oasis for neurodivergent learners. Be concise and adaptive.
 Current cognitive state: ${cognitive}.`;
   if (cognitive === 'focused') prompt += ' Student is focused — suggest deeper content, fewer interruptions.';
   if (cognitive === 'drifting') prompt += ' Student may be drifting — suggest a change of activity (e.g. lab bench, short quiz).';

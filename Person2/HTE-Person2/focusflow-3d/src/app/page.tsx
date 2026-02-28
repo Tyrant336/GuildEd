@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useFocusFlowStore } from "@/store/useFocusFlowStore";
 import { UploadPanel } from "@/components/panels/UploadPanel";
 import { QuizPanel } from "@/components/panels/QuizPanel";
@@ -25,6 +25,134 @@ const ClassroomScene = dynamic(() => import("@/components/three/ClassroomScene")
   ),
 });
 
+// ─── Lab Challenge Panel (Concept Matching) ─────────────────────────────────
+
+function LabChallengePanel({ onClose }: { onClose: () => void }) {
+  const { knowledgeGraph, pushEvent } = useFocusFlowStore();
+  const [pairs, setPairs] = useState<{ concept: string; description: string; id: string }[]>([]);
+  const [shuffledDescriptions, setShuffledDescriptions] = useState<{ description: string; id: string }[]>([]);
+  const [selectedConcept, setSelectedConcept] = useState<string | null>(null);
+  const [matches, setMatches] = useState<Record<string, string>>({});
+  const [results, setResults] = useState<Record<string, boolean> | null>(null);
+
+  // Initialize challenge from knowledge graph
+  useEffect(() => {
+    const concepts = knowledgeGraph?.concepts ?? [];
+    const available = concepts.filter((c) => c.description).slice(0, 4);
+    if (available.length < 2) {
+      // Fallback demo pairs if no concepts loaded
+      const demoPairs = [
+        { concept: "Binary Search", description: "Finds items in sorted data by halving the search space", id: "binary-search" },
+        { concept: "Arrays", description: "Contiguous memory storing elements accessible by index", id: "arrays" },
+        { concept: "Recursion", description: "A function that calls itself to solve smaller subproblems", id: "recursion" },
+        { concept: "Sorting", description: "Arranging elements in a specific order", id: "sorting" },
+      ];
+      setPairs(demoPairs);
+      setShuffledDescriptions([...demoPairs].sort(() => Math.random() - 0.5).map((p) => ({ description: p.description, id: p.id })));
+      return;
+    }
+    const p = available.map((c) => ({
+      concept: c.name,
+      description: c.description!,
+      id: c.concept_id,
+    }));
+    setPairs(p);
+    setShuffledDescriptions([...p].sort(() => Math.random() - 0.5).map((x) => ({ description: x.description, id: x.id })));
+  }, [knowledgeGraph]);
+
+  const handleConceptClick = (id: string) => {
+    if (results) return;
+    setSelectedConcept(selectedConcept === id ? null : id);
+  };
+
+  const handleDescriptionClick = (descId: string) => {
+    if (results || !selectedConcept) return;
+    setMatches((prev) => ({ ...prev, [selectedConcept]: descId }));
+    setSelectedConcept(null);
+  };
+
+  const handleCheck = () => {
+    const r: Record<string, boolean> = {};
+    pairs.forEach((p) => {
+      r[p.id] = matches[p.id] === p.id;
+    });
+    setResults(r);
+    // Push events for correct matches
+    pairs.forEach((p) => {
+      if (r[p.id]) {
+        pushEvent({ type: "challenge_complete", concept_id: p.id, difficulty: "easy" });
+      }
+    });
+  };
+
+  const allMatched = pairs.length > 0 && Object.keys(matches).length === pairs.length;
+  const score = results ? Object.values(results).filter(Boolean).length : 0;
+
+  return (
+    <div className="bg-white dark:bg-neutral-950 p-6 rounded-xl max-w-lg mx-auto">
+      <h3 className="text-xl font-semibold mb-2">Lab Challenge: Concept Match</h3>
+      <p className="text-neutral-500 text-sm mb-4">Click a concept, then click its matching description.</p>
+      <div className="grid grid-cols-2 gap-4 mb-4">
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-neutral-400 uppercase">Concepts</div>
+          {pairs.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => handleConceptClick(p.id)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors ${
+                results
+                  ? results[p.id]
+                    ? "border-green-500 bg-green-50 dark:bg-green-950"
+                    : "border-red-500 bg-red-50 dark:bg-red-950"
+                  : selectedConcept === p.id
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                  : matches[p.id]
+                  ? "border-neutral-300 bg-neutral-100 dark:bg-neutral-800"
+                  : "border-neutral-200 dark:border-neutral-700 hover:border-blue-300"
+              }`}
+            >
+              {p.concept}
+              {matches[p.id] && !results && <span className="ml-1 text-green-500">&#10003;</span>}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-2">
+          <div className="text-xs font-semibold text-neutral-400 uppercase">Descriptions</div>
+          {shuffledDescriptions.map((d) => (
+            <button
+              key={d.id}
+              onClick={() => handleDescriptionClick(d.id)}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm border transition-colors ${
+                selectedConcept
+                  ? "border-neutral-200 dark:border-neutral-700 hover:border-blue-300 cursor-pointer"
+                  : "border-neutral-200 dark:border-neutral-700 cursor-default"
+              } ${
+                Object.values(matches).includes(d.id) ? "opacity-50" : ""
+              }`}
+              disabled={!selectedConcept || Object.values(matches).includes(d.id)}
+            >
+              {d.description}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-2 justify-end">
+        {results ? (
+          <>
+            <p className="text-sm self-center mr-auto">Score: {score}/{pairs.length}</p>
+            <Button variant="outline" onClick={onClose}>Close</Button>
+          </>
+        ) : (
+          <>
+            <Button variant="outline" onClick={onClose}>Cancel</Button>
+            <Button onClick={handleCheck} disabled={!allMatched}>Check Answers</Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Panel Overlay ──────────────────────────────────────────────────────────
 
 function PanelOverlay() {
@@ -42,13 +170,7 @@ function PanelOverlay() {
         {activePanel === "quiz" && <QuizPanel onClose={close} />}
         {activePanel === "tutor" && <TutorPanel onClose={close} />}
         {activePanel === "bookshelf" && <BookshelfPanel onClose={close} />}
-        {activePanel === "challenge" && (
-          <div className="bg-white dark:bg-neutral-950 p-6 rounded-xl text-center">
-            <h3 className="text-xl font-semibold mb-4">Lab Challenges</h3>
-            <p className="text-neutral-500 mb-4">Interactive challenges coming soon!</p>
-            <Button onClick={close}>Close</Button>
-          </div>
-        )}
+        {activePanel === "challenge" && <LabChallengePanel onClose={close} />}
         {activePanel === "progress" && (
           <div className="bg-white dark:bg-neutral-950 p-6 rounded-xl text-center">
             <h3 className="text-xl font-semibold mb-4">Progress Dashboard</h3>
@@ -112,7 +234,7 @@ function HUD() {
       {/* Top bar */}
       <div className="flex items-center justify-between p-4 pointer-events-auto">
         <div className="flex items-center gap-3">
-          <h1 className="text-white font-bold text-lg drop-shadow-lg">FocusFlow 3D</h1>
+          <h1 className="text-white font-bold text-lg drop-shadow-lg">EDU Oasis</h1>
           <span className="text-xs text-white/60 bg-white/10 px-2 py-1 rounded">
             {hasConcepts ? `${knowledgeGraph!.concepts.length} concepts loaded` : "Upload to start"}
           </span>

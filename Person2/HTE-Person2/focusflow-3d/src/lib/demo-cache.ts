@@ -1,11 +1,24 @@
 /**
- * Demo fallback：從 public/demo-cache/*.json 讀取預緩存回應（新需求 18-20h, 20-24h）
- * 當 API 失敗或請求帶 x-demo-fallback: 1 或 ?demo=1 時可回傳靜態 JSON
+ * Demo fallback: read pre-cached JSON responses from public/demo-cache/*.json
+ * Supports DEMO_FALLBACK=1 env var, x-demo-fallback: 1 header, or ?demo=1 query param
  */
 import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 
-const CACHE_DIR = path.join(process.cwd(), 'public', 'demo-cache');
+// Try multiple resolution strategies for Vercel serverless compatibility
+function resolveCacheDir(): string {
+  const candidates = [
+    path.join(process.cwd(), 'public', 'demo-cache'),
+    path.join(process.cwd(), '.next', 'server', 'public', 'demo-cache'),
+    path.resolve('public', 'demo-cache'),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(dir)) return dir;
+  }
+  return candidates[0]; // fallback to default
+}
+
+const CACHE_DIR = resolveCacheDir();
 
 function isDemoFallbackRequest(headers: Headers, url: string): boolean {
   if (headers.get('x-demo-fallback') === '1') return true;

@@ -7,7 +7,7 @@ import { extractKnowledgeGraphFromText } from '@/lib/ingest';
 import { cacheGet, cacheSet, cacheKey } from '@/lib/cache';
 import { wantDemoFallback, readDemoCache, DEMO_FILES } from '@/lib/demo-cache';
 
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   const { PDFParse } = await import('pdf-parse');

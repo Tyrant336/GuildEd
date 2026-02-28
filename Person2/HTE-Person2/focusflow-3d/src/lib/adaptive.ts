@@ -1,5 +1,5 @@
 /**
- * FocusFlow 3D — Adaptive Engine Core Logic (Person 6)
+ * EDU Oasis — Adaptive Engine Core Logic (Person 6)
  * Spaced repetition, prerequisite locking, mastery updates, cognitive assessment.
  */
 

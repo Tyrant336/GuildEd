@@ -1,0 +1,28 @@
+{
+  "questions": [
+    {
+      "concept_id": "binary-search",
+      "question": "What is the time complexity of binary search on a sorted array?",
+      "options": ["O(n)", "O(log n)", "O(n log n)", "O(1)"],
+      "correct_index": 1,
+      "difficulty": "medium",
+      "explanation": "Binary search halves the search space each step, resulting in O(log n) time complexity."
+    },
+    {
+      "concept_id": "binary-search",
+      "question": "What is a prerequisite for performing binary search?",
+      "options": ["The array must be sorted", "The array must contain unique elements", "The array must have an even number of elements", "The array must be stored in contiguous memory"],
+      "correct_index": 0,
+      "difficulty": "medium",
+      "explanation": "Binary search requires the data to be sorted so it can eliminate half the remaining elements at each step."
+    },
+    {
+      "concept_id": "binary-search",
+      "question": "In binary search, if the target is less than the middle element, where do you search next?",
+      "options": ["The right half", "The left half", "Both halves", "Start over from the beginning"],
+      "correct_index": 1,
+      "difficulty": "medium",
+      "explanation": "Since the array is sorted, if the target is less than the middle, it must be in the left (lower) half."
+    }
+  ]
+}

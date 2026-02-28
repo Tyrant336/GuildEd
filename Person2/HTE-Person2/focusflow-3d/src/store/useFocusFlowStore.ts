@@ -1,8 +1,9 @@
 /**
- * FocusFlow 3D — Zustand store (Person 6: enhanced with full PRD §5.1.1 learner model)
+ * EDU Oasis — Zustand store (Person 6: enhanced with full PRD §5.1.1 learner model)
  * Client-side state management matching Supabase PostgreSQL schema.
  */
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import type { KnowledgeGraph, LearnerStateSnapshot, ExplanationMode } from '@/lib/types';
 import type {
   InteractionEvent,
@@ -82,7 +83,9 @@ const defaultLearnerState: LearnerStateSnapshot = {
   session_minutes: 0,
 };
 
-export const useFocusFlowStore = create<FocusFlowState>((set, get) => ({
+export const useFocusFlowStore = create<FocusFlowState>()(
+  persist(
+    (set, get) => ({
   // ── Knowledge Graph ───────────────────────────────────
   knowledgeGraph: null,
   setKnowledgeGraph: (knowledgeGraph) => set({ knowledgeGraph }),
@@ -198,4 +201,15 @@ export const useFocusFlowStore = create<FocusFlowState>((set, get) => ({
       sessionStartTime: null,
       pendingEvents: [],
     }),
-}));
+}),
+    {
+      name: 'edu-oasis-store',
+      partialize: (state) => ({
+        knowledgeGraph: state.knowledgeGraph,
+        learnerState: state.learnerState,
+        conceptRecords: state.conceptRecords,
+        sessionStartTime: state.sessionStartTime,
+      }),
+    }
+  )
+);

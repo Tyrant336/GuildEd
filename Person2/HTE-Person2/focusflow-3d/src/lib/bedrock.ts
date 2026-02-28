@@ -1,5 +1,5 @@
 /**
- * AWS Bedrock provider for FocusFlow 3D (Person 2)
+ * AWS Bedrock provider for EDU Oasis (Person 2)
  * Uses @ai-sdk/amazon-bedrock — supports AWS credentials or AWS_BEARER_TOKEN_BEDROCK
  */
 import { bedrock } from '@ai-sdk/amazon-bedrock';

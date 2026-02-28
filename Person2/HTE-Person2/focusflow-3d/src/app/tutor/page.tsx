@@ -57,7 +57,7 @@ export default function TutorPage() {
 
   return (
     <div className="mx-auto max-w-2xl p-4">
-      <h1 className="mb-4 text-xl font-semibold">FocusFlow 3D — AI 導師</h1>
+      <h1 className="mb-4 text-xl font-semibold">EDU Oasis — AI Tutor</h1>
       <p className="mb-2 text-sm text-gray-600">
         學習者狀態已從 Zustand 傳入（cognitive_state: {learnerState?.cognitive_state ?? '—'}）
       </p>
