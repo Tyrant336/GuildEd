@@ -16,16 +16,33 @@ try:
     load_dotenv()
 except ImportError:
     pass
-# Use Exa when EXA_API_KEY is set, else DuckDuckGo
+# Backend priority: Tavily > Exa > DuckDuckGo (set TAVILY_API_KEY, EXA_API_KEY, or neither)
 _SEARCH_BACKEND = "duckduckgo"
 try:
-    if os.environ.get("EXA_API_KEY"):
+    if os.environ.get("TAVILY_API_KEY"):
+        from app.search_tavily import search_topic, search_youtube, get_bookshelf_resources, get_cache_stats
+        _SEARCH_BACKEND = "tavily"
+    elif os.environ.get("EXA_API_KEY"):
         from app.search_exa import search_topic, search_youtube, get_bookshelf_resources, get_cache_stats
         _SEARCH_BACKEND = "exa"
     else:
         from app.search import search_topic, search_youtube, get_bookshelf_resources, get_cache_stats
 except ImportError:
     from app.search import search_topic, search_youtube, get_bookshelf_resources, get_cache_stats
+
+try:
+    from app.quality_bedrock import apply_curation
+except ImportError:
+    def apply_curation(resources, **kwargs):
+        return resources
+
+try:
+    from app.cache_s3 import get as s3_cache_get, set as s3_cache_set
+except ImportError:
+    def s3_cache_get(*args, **kwargs):
+        return None
+    def s3_cache_set(*args, **kwargs):
+        pass
 
 Base.metadata.create_all(bind=engine)# create the tables in the database, if they do not exist already.
 
@@ -56,7 +73,8 @@ class SpeechRequest(BaseModel):
 def vibe():
     """Health / vibe check: backend in use, cache stats."""
     cache = get_cache_stats()
-    message = "Exa is powering the bookshelf. Cache is saving your quota." if _SEARCH_BACKEND == "exa" else "DuckDuckGo fallback is active. Set EXA_API_KEY for Exa."
+    messages = {"tavily": "Tavily is powering the bookshelf.", "exa": "Exa is powering the bookshelf. Cache is saving your quota.", "duckduckgo": "DuckDuckGo fallback is active. Set TAVILY_API_KEY or EXA_API_KEY for enhanced search."}
+    message = messages.get(_SEARCH_BACKEND, messages["duckduckgo"])
     return {"status": "chill", "ready": True, "backend": _SEARCH_BACKEND, "cache": cache, "message": message}
 
 
