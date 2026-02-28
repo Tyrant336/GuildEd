@@ -14,6 +14,12 @@ try:
 except ImportError:
     pass
 
+try:
+    from app.memory_rag import get_relevant as rag_get_relevant
+except ImportError:
+    def rag_get_relevant(*args, **kwargs):
+        return []
+
 DEFAULT_MODEL_ID = "anthropic.claude-3-haiku-20240307-v1:0"
 
 
@@ -42,9 +48,19 @@ def score_resources(topic: str, resources: List[dict], model_id: str | None = No
         snippet = (r.get("snippet") or "")[:400]
         lines.append(f"[{i}] Title: {title}\nURL: {url}\nSnippet: {snippet}")
 
-    prompt = f"""You are a quality rater for educational web resources. For the learning topic "{topic}", rate each resource below.
+    # RAG: retrieve relevant rules to guide scoring
+    guidelines = ""
+    try:
+        chunks = rag_get_relevant(f"{topic} quality guidelines for educational resources", type="rule", top_k=3)
+        if chunks:
+            guideline_texts = [c.get("text", "").strip() for c in chunks if c.get("text")]
+            if guideline_texts:
+                guidelines = "\nUse these guidelines when scoring (apply if relevant):\n" + "\n".join(f"- {g}" for g in guideline_texts) + "\n\n"
+    except Exception:
+        pass
 
-For each resource, output a single line: index,relevance,recency,authority
+    prompt = f"""You are a quality rater for educational web resources. For the learning topic "{topic}", rate each resource below.
+{guidelines}For each resource, output a single line: index,relevance,recency,authority
 - relevance: 0.0-1.0 (how well it matches the topic)
 - recency: 0.0-1.0 (how up-to-date it seems from URL/snippet)
 - authority: 0.0-1.0 (trustworthiness of source)

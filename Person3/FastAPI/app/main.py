@@ -44,6 +44,12 @@ except ImportError:
     def s3_cache_set(*args, **kwargs):
         pass
 
+try:
+    from app.memory_rag import add_memory as rag_add_memory
+except ImportError:
+    def rag_add_memory(*args, **kwargs):
+        pass
+
 Base.metadata.create_all(bind=engine)# create the tables in the database, if they do not exist already.
 
 app = FastAPI()
@@ -67,6 +73,19 @@ class SpeechRequest(BaseModel):
     """Text to convert to speech (TTS) for NPC dialogue."""
     text: str
     lang: str = "en"
+
+
+class FeedbackRequest(BaseModel):
+    """RAG feedback: store a correction so future scoring uses it."""
+    context: str = ""
+    correction: str
+    type: str = "rule"
+
+
+class MemoryRequest(BaseModel):
+    """RAG admin: add a rule, preference, or lesson to the vector DB."""
+    text: str
+    type: str = "rule"
 
 
 @app.get("/vibe")
@@ -122,13 +141,26 @@ def bookshelf(
 ):
     """Resources for 3D bookshelf. content_type=video for YouTube only."""
     topic_list = [t.strip() for t in topics.split(",") if t.strip()]
-    return {"resources": _curated_bookshelf_resources(topic_list, per_topic, content_type_filter=content_type)}
+    if not topic_list:
+        topic_list = ["merge sort", "binary search", "divide and conquer"]
+    resources = _curated_bookshelf_resources(topic_list, per_topic, content_type_filter=content_type)
+    out = {"resources": resources}
+    if not resources:
+        out["hint"] = "No results. Try GET /bookshelf?topics=binary%20search&per_topic=3 or set TAVILY_API_KEY/EXA_API_KEY for better search."
+    return out
 
 
 @app.post("/bookshelf")
 def bookshelf_post(body: BookshelfRequest, content_type: str | None = None):
     """Same as GET but topics in body. Add ?content_type=video for YouTube only."""
-    return {"resources": _curated_bookshelf_resources(body.topics, body.per_topic, content_type_filter=content_type)}
+    topic_list = [t.strip() for t in (body.topics or []) if t and str(t).strip()]
+    if not topic_list:
+        topic_list = ["merge sort", "binary search", "divide and conquer"]
+    resources = _curated_bookshelf_resources(topic_list, body.per_topic, content_type_filter=content_type)
+    out = {"resources": resources}
+    if not resources:
+        out["hint"] = "No results. DuckDuckGo may be rate-limited. Set TAVILY_API_KEY or EXA_API_KEY in .env and restart."
+    return out
 
 
 @app.post("/bookshelf/refresh")
@@ -149,6 +181,27 @@ def bookshelf_prewarm(body: BookshelfRequest | None = Body(None)):
     if not body or not body.topics:
         body = BookshelfRequest(topics=DEMO_TOPICS, per_topic=3)
     return {"resources": _curated_bookshelf_resources(body.topics, body.per_topic, skip_cache=False)}
+
+
+# ---- Person 3: RAG memory (feedback + rules) ----
+@app.post("/feedback")
+def feedback(body: FeedbackRequest):
+    """
+    Store a correction in RAG memory. Future bookshelf scoring will retrieve and apply it.
+    Body: { "context": "topic or query", "correction": "new rule or preference", "type": "rule" }.
+    """
+    rag_add_memory(body.correction, type=body.type or "rule", metadata={"context": body.context} if body.context else None)
+    return {"ok": True, "message": "Correction stored. Future scoring will use it when relevant."}
+
+
+@app.post("/memory")
+def memory(body: MemoryRequest):
+    """
+    Add a rule, preference, or lesson to RAG memory (admin seed). type: rule, preference, or lesson.
+    Body: { "text": "Prefer .edu for CS topics.", "type": "rule" }.
+    """
+    rag_add_memory(body.text, type=body.type or "rule")
+    return {"ok": True, "message": "Memory stored."}
 
 
 # ---- Person 3: NPC speech (TTS) ----

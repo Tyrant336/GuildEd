@@ -71,6 +71,19 @@ export async function POST(request: NextRequest) {
 
     const graph = await extractKnowledgeGraphFromText(text);
     cacheSet(ingestKey, graph);
+
+    // Auto-trigger P3 bookshelf prewarm so cache is ready when user opens bookshelf
+    const p3Url = process.env.P3_SCRAPER_URL;
+    if (p3Url && graph.concepts?.length) {
+      const topics = graph.concepts.map((c) => c.name).slice(0, 10);
+      fetch(`${p3Url}/bookshelf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topics, per_topic: 3 }),
+        signal: AbortSignal.timeout(5000),
+      }).catch(() => {});
+    }
+
     return NextResponse.json(graph);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
